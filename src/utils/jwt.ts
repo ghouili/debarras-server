@@ -1,4 +1,4 @@
-import jwt from "jsonwebtoken";
+import jwt, { SignOptions } from "jsonwebtoken";
 import { env } from "../config/env";
 
 export type AccessTokenPayload = {
@@ -8,7 +8,7 @@ export type AccessTokenPayload = {
 
 export const signAccessToken = (payload: AccessTokenPayload) =>
   jwt.sign(payload, env.JWT_ACCESS_SECRET, {
-    expiresIn: env.JWT_ACCESS_TTL
+    expiresIn: env.JWT_ACCESS_TTL as SignOptions["expiresIn"]
   });
 
 export const verifyAccessToken = (token: string) =>

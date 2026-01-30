@@ -102,24 +102,37 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s\n' \
-            "PORT=$PORT" \
-            "DATABASE_URL=$DATABASE_URL" \
-            "JWT_ACCESS_SECRET=$JWT_ACCESS_SECRET" \
-            "JWT_REFRESH_SECRET=$JWT_REFRESH_SECRET" \
-            "JWT_ACCESS_TTL=$JWT_ACCESS_TTL" \
-            "JWT_REFRESH_TTL=$JWT_REFRESH_TTL" \
-            "REQUIRE_EMAIL_VERIFICATION=$REQUIRE_EMAIL_VERIFICATION" \
-            "CORS_ORIGIN=$CORS_ORIGIN" \
-            "SMTP_HOST=$SMTP_HOST" \
-            "SMTP_PORT=$SMTP_PORT" \
-            "SMTP_USER=$SMTP_USER" \
-            "SMTP_PASS=$SMTP_PASS" \
-            "SMTP_FROM=$SMTP_FROM" \
-            "RATE_LIMIT_WINDOW_MS=$RATE_LIMIT_WINDOW_MS" \
-            "RATE_LIMIT_MAX=$RATE_LIMIT_MAX" \
-            "RATE_LIMIT_AUTH_MAX=$RATE_LIMIT_AUTH_MAX" \
-            > env.payload
+          escape() {
+            printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\$/\\$/g' -e 's/`/\\`/g'
+          }
+          write_var() {
+            local key="$1"
+            local value="${2-}"
+            if [[ -n "$value" ]]; then
+              printf '%s="%s"\n' "$key" "$(escape "$value")"
+            else
+              printf '%s=\n' "$key"
+            fi
+          }
+
+          {
+            write_var "PORT" "$PORT"
+            write_var "DATABASE_URL" "$DATABASE_URL"
+            write_var "JWT_ACCESS_SECRET" "$JWT_ACCESS_SECRET"
+            write_var "JWT_REFRESH_SECRET" "$JWT_REFRESH_SECRET"
+            write_var "JWT_ACCESS_TTL" "$JWT_ACCESS_TTL"
+            write_var "JWT_REFRESH_TTL" "$JWT_REFRESH_TTL"
+            write_var "REQUIRE_EMAIL_VERIFICATION" "$REQUIRE_EMAIL_VERIFICATION"
+            write_var "CORS_ORIGIN" "$CORS_ORIGIN"
+            write_var "SMTP_HOST" "$SMTP_HOST"
+            write_var "SMTP_PORT" "$SMTP_PORT"
+            write_var "SMTP_USER" "$SMTP_USER"
+            write_var "SMTP_PASS" "$SMTP_PASS"
+            write_var "SMTP_FROM" "$SMTP_FROM"
+            write_var "RATE_LIMIT_WINDOW_MS" "$RATE_LIMIT_WINDOW_MS"
+            write_var "RATE_LIMIT_MAX" "$RATE_LIMIT_MAX"
+            write_var "RATE_LIMIT_AUTH_MAX" "$RATE_LIMIT_AUTH_MAX"
+          } > env.payload
 
       - name: Upload env payload to VPS
         shell: bash

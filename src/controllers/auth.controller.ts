@@ -55,6 +55,9 @@ export const resetPasswordController = async (req: Request, res: Response) => {
 
 export const changePasswordController = async (req: Request, res: Response) => {
   const { currentPassword, newPassword } = req.validated.body;
+  if (!req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
   await changePassword(req.user.id, currentPassword, newPassword);
   res.status(204).send();
 };

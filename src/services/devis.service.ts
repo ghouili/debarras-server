@@ -1,10 +1,11 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { getPagination } from "../utils/pagination";
 import { AppError } from "../middlewares/error-handler";
 
 export const listDevis = async (query: Record<string, string>) => {
   const { page, limit, skip, take } = getPagination(query.page, query.limit);
-  const where: Record<string, unknown> = {};
+  const where: Prisma.DevisWhereInput = {};
 
   if (query.status) {
     where.status = query.status;
@@ -45,10 +46,10 @@ export const getDevis = async (id: string) => {
   return devis;
 };
 
-export const createDevis = async (data: Record<string, unknown>) =>
+export const createDevis = async (data: Prisma.DevisCreateInput) =>
   prisma.devis.create({ data });
 
-export const updateDevis = async (id: string, data: Record<string, unknown>) => {
+export const updateDevis = async (id: string, data: Prisma.DevisUpdateInput) => {
   await getDevis(id);
   return prisma.devis.update({ where: { id }, data });
 };

@@ -1,10 +1,11 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { getPagination } from "../utils/pagination";
 import { AppError } from "../middlewares/error-handler";
 
 export const listContacts = async (query: Record<string, string>) => {
   const { page, limit, skip, take } = getPagination(query.page, query.limit);
-  const where: Record<string, unknown> = {};
+  const where: Prisma.ContactWhereInput = {};
 
   if (query.status) {
     where.status = query.status;
@@ -45,10 +46,10 @@ export const getContact = async (id: string) => {
   return contact;
 };
 
-export const createContact = async (data: Record<string, unknown>) =>
+export const createContact = async (data: Prisma.ContactCreateInput) =>
   prisma.contact.create({ data });
 
-export const updateContact = async (id: string, data: Record<string, unknown>) => {
+export const updateContact = async (id: string, data: Prisma.ContactUpdateInput) => {
   await getContact(id);
   return prisma.contact.update({ where: { id }, data });
 };
