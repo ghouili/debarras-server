@@ -20,7 +20,7 @@ jobs:
       SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
 
       # ---- Remote deploy config (Environment -> deploy -> Variables) ----
-      APP_DIR: ${{ vars.APP_DIR || '/var/www/debarras-server' }}
+      APP_DIR: ${{ vars.APP_DIR || '/var/www/debarras/api' }}
       BRANCH: ${{ vars.BRANCH || 'production' }}
       PM2_APP: ${{ vars.PM2_APP || 'debarras-server' }}
       NODE_VERSION: ${{ vars.NODE_VERSION || '24' }}

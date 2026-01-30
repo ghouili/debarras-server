@@ -11,7 +11,7 @@ REPO_URL="${REPO_URL:-}"
 ENV_FILE="$APP_DIR/.env"
 ENV_PAYLOAD_PATH="${ENV_PAYLOAD_PATH:-/tmp/express-api.env}"
 
-PM2_APP="${PM2_APP:-debarras-server}"
+PM2_APP="${PM2_APP:-debarras-api}"
 
 # If you use NVM on the server:
 NODE_VERSION="${NODE_VERSION:-}"
