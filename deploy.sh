@@ -4,7 +4,7 @@ set -euo pipefail
 #############################################
 # CONFIG (override via env)
 #############################################
-APP_DIR="${APP_DIR:-/var/www/debarras-server}"
+APP_DIR="${APP_DIR:-/var/www/debarras/api}"
 BRANCH="${BRANCH:-production}"
 REPO_URL="${REPO_URL:-}"
 
