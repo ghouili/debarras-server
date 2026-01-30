@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  agent
+  viewer
+}
+
+enum ContactStatus {
+  new
+  in_progress
+  closed
+}
+
+enum DevisStatus {
+  new
+  quoted
+  won
+  lost
+}
+
+enum EmailStatus {
+  queued
+  sent
+  failed
+}
+
+model User {
+  id                String   @id @default(uuid())
+  firstName         String
+  lastName          String
+  email             String   @unique
+  phone             String?
+  role              UserRole @default(agent)
+  passwordHash      String
+  isActive          Boolean  @default(true)
+  isEmailVerified   Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  refreshTokens     RefreshToken[]
+  resetTokens       PasswordResetToken[]
+}
+
+model Contact {
+  id         String        @id @default(uuid())
+  source     String
+  name       String
+  email      String
+  phone      String
+  postalCode String?
+  message    String
+  consent    Boolean
+  status     ContactStatus @default(new)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  emails     EmailMessage[] @relation("ContactEmails")
+}
+
+model Devis {
+  id             String      @id @default(uuid())
+  source         String
+  service        String
+  postalCode     String
+  city           String?
+  timing         String
+  localType      String
+  propertyType   String?
+  rooms          String?
+  volume         String?
+  volumeEstimate String?
+  floor          String
+  elevator       Boolean
+  truckAccess    Boolean?
+  surfaceArea    String?
+  message        String?
+  firstName      String
+  lastName       String
+  email          String
+  phone          String
+  consent        Boolean
+  status         DevisStatus @default(new)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  emails         EmailMessage[] @relation("DevisEmails")
+}
+
+model EmailMessage {
+  id               String      @id @default(uuid())
+  to               String
+  from             String
+  subject          String
+  text             String?
+  html             String?
+  status           EmailStatus @default(queued)
+  error            String?
+  relatedContactId String?
+  relatedDevisId   String?
+  createdAt        DateTime    @default(now())
+  sentAt           DateTime?
+
+  relatedContact   Contact?    @relation("ContactEmails", fields: [relatedContactId], references: [id])
+  relatedDevis     Devis?      @relation("DevisEmails", fields: [relatedDevisId], references: [id])
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  usedAt     DateTime?
+
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([tokenHash])
+}
