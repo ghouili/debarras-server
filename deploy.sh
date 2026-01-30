@@ -8,6 +8,9 @@ APP_DIR="${APP_DIR:-/var/www/debarras-server}"
 BRANCH="${BRANCH:-production}"
 REPO_URL="${REPO_URL:-}"
 
+ENV_FILE="$APP_DIR/.env"
+ENV_PAYLOAD_PATH="${ENV_PAYLOAD_PATH:-/tmp/express-api.env}"
+
 PM2_APP="${PM2_APP:-debarras-server}"
 
 # If you use NVM on the server:
@@ -125,6 +128,21 @@ fi
 #############################################
 cd "$APP_DIR"
 
+#############################################
+# ENV (optional payload + load)
+#############################################
+if [[ -f "$ENV_PAYLOAD_PATH" ]]; then
+  log "Applying .env payload"
+  mv "$ENV_PAYLOAD_PATH" "$ENV_FILE"
+fi
+
+touch "$ENV_FILE"
+
+set -a
+# shellcheck disable=SC1090
+source "$ENV_FILE" || true
+set +a
+
 if [[ ! -d ".git" ]]; then
   TMP_CLONE="/tmp/debarras_server_clone_$$"
   log "First deploy → cloning into: $TMP_CLONE"
@@ -148,8 +166,8 @@ cd "$APP_DIR"
 require npm
 
 if [[ -f package-lock.json ]]; then
-  log "Installing dependencies (npm ci)"
-  npm ci --no-audit --no-fund
+  log "Installing dependencies (npm install)"
+  npm install --no-audit --no-fund
 else
   log "Installing dependencies (npm install)"
   npm install --no-audit --no-fund
@@ -160,6 +178,12 @@ fi
 #############################################
 if [[ -f "prisma/schema.prisma" ]]; then
   log "Prisma detected"
+
+  if [[ -z "${DATABASE_URL:-}" ]]; then
+    log "ERROR: DATABASE_URL is not set. Check $ENV_FILE"
+    exit 1
+  fi
+
   if has_npm_script "prisma:generate"; then
     npm run prisma:generate
   else
@@ -168,6 +192,10 @@ if [[ -f "prisma/schema.prisma" ]]; then
 
   # Safe default for production DB
   npx prisma migrate deploy || log "WARN: prisma migrate deploy failed (check DB / migrations)"
+
+  if has_npm_script "prisma:seed"; then
+    npx prisma db seed
+  fi
 fi
 
 #############################################
