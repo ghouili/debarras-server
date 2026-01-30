@@ -86,17 +86,17 @@ jobs:
 
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Debug SSH auth (safe)
-        shell: bash
-        run: |
-          set -euo pipefail
-          ssh -vvv \
-            -p "$SSH_PORT" \
-            -i ~/.ssh/id_ed25519 \
-            -o IdentitiesOnly=yes \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile=~/.ssh/known_hosts \
-            "$SSH_USERNAME@$SSH_HOST" "echo 'SSH OK'" || true
+      # - name: Debug SSH auth (safe)
+      #   shell: bash
+      #   run: |
+      #     set -euo pipefail
+      #     ssh -vvv \
+      #       -p "$SSH_PORT" \
+      #       -i ~/.ssh/id_ed25519 \
+      #       -o IdentitiesOnly=yes \
+      #       -o StrictHostKeyChecking=yes \
+      #       -o UserKnownHostsFile=~/.ssh/known_hosts \
+      #       "$SSH_USERNAME@$SSH_HOST" "echo 'SSH OK'" || true
 
       - name: Create env payload from GitHub vars
         shell: bash
