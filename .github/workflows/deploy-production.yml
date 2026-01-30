@@ -43,6 +43,15 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Write SSH key file
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
       - name: Add VPS host to known_hosts
         shell: bash
         run: |
@@ -65,6 +74,7 @@ jobs:
           set -euo pipefail
           ssh -vvv \
             -p "$SSH_PORT" \
+            -i ~/.ssh/id_ed25519 \
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
@@ -73,7 +83,7 @@ jobs:
       - name: Upload deploy script to VPS
         shell: bash
         run: |
-          scp -P "$SSH_PORT" deploy.sh "$SSH_USERNAME@$SSH_HOST:/tmp/deploy.sh"
+          scp -i ~/.ssh/id_ed25519 -P "$SSH_PORT" deploy.sh "$SSH_USERNAME@$SSH_HOST:/tmp/deploy.sh"
 
       - name: Execute remote deployment
         shell: bash
@@ -81,6 +91,7 @@ jobs:
           set -euo pipefail
           ssh \
             -p "$SSH_PORT" \
+            -i ~/.ssh/id_ed25519 \
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
