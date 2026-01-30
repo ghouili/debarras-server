@@ -62,7 +62,7 @@ jobs:
       - name: Upload deploy script to VPS
         shell: bash
         run: |
-          scp -i ~/.ssh/id_ed25519 -P "$SSH_PORT" deploy.sh "$SSH_USERNAME@$SSH_HOST:/tmp/deploy.sh"
+          scp -P "$SSH_PORT" deploy.sh "$SSH_USERNAME@$SSH_HOST:/tmp/deploy.sh"
 
       - name: Execute remote deployment
         shell: bash
