@@ -55,7 +55,30 @@ if [[ -z "$REPO_URL" ]]; then
   exit 1
 fi
 
-mkdir -p "$APP_DIR"
+if [[ -d "$APP_DIR" ]]; then
+  if [[ ! -w "$APP_DIR" ]]; then
+    if command -v sudo >/dev/null 2>&1; then
+      log "Fixing permissions for $APP_DIR"
+      sudo chown -R "$USER":"$USER" "$APP_DIR"
+    else
+      log "ERROR: No write permission for $APP_DIR and sudo is not available."
+      exit 1
+    fi
+  fi
+else
+  if mkdir -p "$APP_DIR" 2>/dev/null; then
+    :
+  else
+    if command -v sudo >/dev/null 2>&1; then
+      log "Creating deploy directory with sudo: $APP_DIR"
+      sudo mkdir -p "$APP_DIR"
+      sudo chown -R "$USER":"$USER" "$APP_DIR"
+    else
+      log "ERROR: Cannot create $APP_DIR and sudo is not available."
+      exit 1
+    fi
+  fi
+fi
 log "Deploy dir: $APP_DIR"
 log "Repo: $REPO_URL (branch: $BRANCH)"
 
