@@ -18,6 +18,7 @@ export const get = async (req: Request, res: Response) => {
 };
 
 export const create = async (req: Request, res: Response) => {
+  console.log("[contacts.create] payload", req.validated?.body, req.body);
   const contact = await createContact(req.validated.body);
   res.status(201).json(contact);
 };

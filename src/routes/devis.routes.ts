@@ -6,10 +6,15 @@ import { devisCreateSchema, devisIdSchema, devisUpdateSchema } from "../validato
 
 const router = Router();
 
-router.get("/", authMiddleware(["admin", "agent"]), list);
-router.get("/:id", authMiddleware(["admin", "agent"]), validate(devisIdSchema), get);
-router.post("/", validate(devisCreateSchema), create);
-router.patch("/:id", authMiddleware(["admin", "agent"]), validate(devisUpdateSchema), update);
-router.delete("/:id", authMiddleware(["admin"]), validate(devisIdSchema), remove);
+router.get("/", list);
+router.get("/:id", validate(devisIdSchema), get);
+router.post("/", create);
+router.patch("/:id", validate(devisUpdateSchema), update);
+router.delete("/:id", validate(devisIdSchema), remove);
+// router.get("/", authMiddleware(["admin", "agent"]), list);
+// router.get("/:id", authMiddleware(["admin", "agent"]), validate(devisIdSchema), get);
+// router.post("/", validate(devisCreateSchema), create);
+// router.patch("/:id", authMiddleware(["admin", "agent"]), validate(devisUpdateSchema), update);
+// router.delete("/:id", authMiddleware(["admin"]), validate(devisIdSchema), remove);
 
 export default router;

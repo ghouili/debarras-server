@@ -8,7 +8,7 @@ const router = Router();
 
 router.get("/", list);
 router.get("/:id", validate(contactIdSchema), get);
-router.post("/",create );
+router.post("/", validate(contactCreateSchema), create);
 router.patch("/:id", validate(contactUpdateSchema), update);
 router.delete("/:id",  validate(contactIdSchema), remove);
 // router.get("/", authMiddleware(["admin", "agent"]), list);
