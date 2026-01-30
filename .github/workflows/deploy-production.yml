@@ -62,13 +62,7 @@ jobs:
       - name: Upload deploy script to VPS
         shell: bash
         run: |
-          set -euo pipefail
-          scp \
-            -P "$SSH_PORT" \
-            -o IdentitiesOnly=yes \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile=~/.ssh/known_hosts \
-            ./deploy.sh "$SSH_USERNAME@$SSH_HOST:/tmp/deploy.sh"
+          scp -i ~/.ssh/id_ed25519 -P "$SSH_PORT" deploy.sh "$SSH_USERNAME@$SSH_HOST:/tmp/deploy.sh"
 
       - name: Execute remote deployment
         shell: bash
