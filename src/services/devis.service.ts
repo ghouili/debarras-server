@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { DevisStatus, Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { getPagination } from "../utils/pagination";
 import { AppError } from "../middlewares/error-handler";
@@ -7,8 +7,8 @@ export const listDevis = async (query: Record<string, string>) => {
   const { page, limit, skip, take } = getPagination(query.page, query.limit);
   const where: Prisma.DevisWhereInput = {};
 
-  if (query.status) {
-    where.status = query.status;
+  if (query.status && Object.values(DevisStatus).includes(query.status as DevisStatus)) {
+    where.status = query.status as DevisStatus;
   }
 
   if (query.search) {

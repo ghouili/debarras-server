@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { ContactStatus, Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { getPagination } from "../utils/pagination";
 import { AppError } from "../middlewares/error-handler";
@@ -7,8 +7,8 @@ export const listContacts = async (query: Record<string, string>) => {
   const { page, limit, skip, take } = getPagination(query.page, query.limit);
   const where: Prisma.ContactWhereInput = {};
 
-  if (query.status) {
-    where.status = query.status;
+  if (query.status && Object.values(ContactStatus).includes(query.status as ContactStatus)) {
+    where.status = query.status as ContactStatus;
   }
 
   if (query.search) {
