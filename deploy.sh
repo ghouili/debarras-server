@@ -138,6 +138,18 @@ fi
 
 touch "$ENV_FILE"
 
+if [[ -f ".env.example" ]]; then
+  log "Syncing .env with .env.example defaults"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    key="${line%%=*}"
+    [[ -z "$key" ]] && continue
+    if ! grep -q "^${key}=" "$ENV_FILE"; then
+      printf '%s\n' "$line" >> "$ENV_FILE"
+    fi
+  done < ".env.example"
+fi
+
 set -a
 # shellcheck disable=SC1090
 source "$ENV_FILE" || true
