@@ -145,7 +145,12 @@ if [[ -f ".env.example" ]]; then
     key="${line%%=*}"
     [[ -z "$key" ]] && continue
     if ! grep -q "^${key}=" "$ENV_FILE"; then
-      printf '%s\n' "$line" >> "$ENV_FILE"
+      env_value="${!key-}"
+      if [[ -n "$env_value" ]]; then
+        printf '%s\n' "${key}=${env_value}" >> "$ENV_FILE"
+      else
+        printf '%s\n' "$line" >> "$ENV_FILE"
+      fi
     fi
   done < ".env.example"
 fi

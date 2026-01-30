@@ -25,6 +25,24 @@ jobs:
       PM2_APP: ${{ vars.PM2_APP || 'debarras-server' }}
       NODE_VERSION: ${{ vars.NODE_VERSION || '24' }}
 
+      # ---- App env vars (GitHub Environment -> Variables) ----
+      PORT: ${{ vars.PORT || '4000' }}
+      DATABASE_URL: ${{ vars.DATABASE_URL }}
+      JWT_ACCESS_SECRET: ${{ vars.JWT_ACCESS_SECRET }}
+      JWT_REFRESH_SECRET: ${{ vars.JWT_REFRESH_SECRET }}
+      JWT_ACCESS_TTL: ${{ vars.JWT_ACCESS_TTL || '15m' }}
+      JWT_REFRESH_TTL: ${{ vars.JWT_REFRESH_TTL || '30d' }}
+      REQUIRE_EMAIL_VERIFICATION: ${{ vars.REQUIRE_EMAIL_VERIFICATION || 'false' }}
+      CORS_ORIGIN: ${{ vars.CORS_ORIGIN || 'http://localhost:3000' }}
+      SMTP_HOST: ${{ vars.SMTP_HOST }}
+      SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
+      SMTP_USER: ${{ vars.SMTP_USER }}
+      SMTP_PASS: ${{ vars.SMTP_PASS }}
+      SMTP_FROM: ${{ vars.SMTP_FROM }}
+      RATE_LIMIT_WINDOW_MS: ${{ vars.RATE_LIMIT_WINDOW_MS || '900000' }}
+      RATE_LIMIT_MAX: ${{ vars.RATE_LIMIT_MAX || '100' }}
+      RATE_LIMIT_AUTH_MAX: ${{ vars.RATE_LIMIT_AUTH_MAX || '10' }}
+
       # Repo to deploy (SSH URL is required on server side)
       # (You can override with an Environment Variable if you want.)
       REPO_SSH_URL: ${{ vars.REPO_SSH_URL || 'git@github.com:ghouili/debarras-server.git' }}
@@ -80,6 +98,35 @@ jobs:
             -o UserKnownHostsFile=~/.ssh/known_hosts \
             "$SSH_USERNAME@$SSH_HOST" "echo 'SSH OK'" || true
 
+      - name: Create env payload from GitHub vars
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            "PORT=$PORT" \
+            "DATABASE_URL=$DATABASE_URL" \
+            "JWT_ACCESS_SECRET=$JWT_ACCESS_SECRET" \
+            "JWT_REFRESH_SECRET=$JWT_REFRESH_SECRET" \
+            "JWT_ACCESS_TTL=$JWT_ACCESS_TTL" \
+            "JWT_REFRESH_TTL=$JWT_REFRESH_TTL" \
+            "REQUIRE_EMAIL_VERIFICATION=$REQUIRE_EMAIL_VERIFICATION" \
+            "CORS_ORIGIN=$CORS_ORIGIN" \
+            "SMTP_HOST=$SMTP_HOST" \
+            "SMTP_PORT=$SMTP_PORT" \
+            "SMTP_USER=$SMTP_USER" \
+            "SMTP_PASS=$SMTP_PASS" \
+            "SMTP_FROM=$SMTP_FROM" \
+            "RATE_LIMIT_WINDOW_MS=$RATE_LIMIT_WINDOW_MS" \
+            "RATE_LIMIT_MAX=$RATE_LIMIT_MAX" \
+            "RATE_LIMIT_AUTH_MAX=$RATE_LIMIT_AUTH_MAX" \
+            > env.payload
+
+      - name: Upload env payload to VPS
+        shell: bash
+        run: |
+          scp -i ~/.ssh/id_ed25519 -P "$SSH_PORT" env.payload "$SSH_USERNAME@$SSH_HOST:/tmp/express-api.env"
+          rm -f env.payload
+
       - name: Upload deploy script to VPS
         shell: bash
         run: |
@@ -106,6 +153,7 @@ jobs:
               export PM2_APP=\"${PM2_APP}\"
 
               export GITHUB_DEPLOY_KEY_PATH=\"${GITHUB_DEPLOY_KEY_PATH}\"
+              export ENV_PAYLOAD_PATH="/tmp/express-api.env"
 
               /tmp/deploy.sh
             '"
