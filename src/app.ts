@@ -19,8 +19,10 @@ app.use(helmet());
 app.use(cors({ origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN }));
 app.use(compression());
 app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true }));
 app.use(morgan("combined"));
 app.use(defaultRateLimiter);
+app.set('trust proxy', 1);
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
