@@ -2,63 +2,117 @@
 set -euo pipefail
 
 #############################################
-# CONFIG (all overridable from SSH env vars)
+# CONFIG (override via env)
 #############################################
-APP_DIR="${APP_DIR:-/var/www/express-crm-api}"
+APP_DIR="${APP_DIR:-/var/www/debarras-server}"
 BRANCH="${BRANCH:-production}"
 REPO_URL="${REPO_URL:-}"
 
-ENV_FILE="$APP_DIR/.env"
-ENV_PAYLOAD_PATH="${ENV_PAYLOAD_PATH:-/tmp/express-api.env}"
+PM2_APP="${PM2_APP:-debarras-server}"
 
-PM2_APP="${PM2_APP:-express-crm-api}"
-APP_PORT="${APP_PORT:-3000}"
-
-# If you have nvm installed, pass NVM_DIR from workflow vars or default to $HOME/.nvm
+# If you use NVM on the server:
+NODE_VERSION="${NODE_VERSION:-}"
 NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 
-#############################################
-# Logger (no secrets in output)
-#############################################
+# GitHub deploy key path ON SERVER (private key file).
+# This is used ONLY for "git clone/pull" from GitHub.
+GITHUB_DEPLOY_KEY_PATH="${GITHUB_DEPLOY_KEY_PATH:-$HOME/.ssh/debarras_server_github_deploy}"
+GITHUB_KNOWN_HOSTS="${GITHUB_KNOWN_HOSTS:-$HOME/.ssh/known_hosts}"
+
+LOCK_FILE="/tmp/deploy_debarras_server.lock"
+
 log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
 
+require() {
+  command -v "$1" >/dev/null 2>&1 || { log "ERROR: missing dependency: $1"; exit 1; }
+}
+
+has_npm_script() {
+  node -e "const p=require('./package.json');process.exit(p.scripts&&p.scripts['$1']?0:1)" >/dev/null 2>&1
+}
+
 #############################################
-# LOAD NODE (NVM)
+# LOCK (avoid concurrent deploys)
 #############################################
-if [ -f "$NVM_DIR/nvm.sh" ]; then
-  log "Loading NVM from $NVM_DIR"
-  # shellcheck disable=SC1091
-  source "$NVM_DIR/nvm.sh"
+if command -v flock >/dev/null 2>&1; then
+  exec 9>"$LOCK_FILE"
+  if ! flock -n 9; then
+    log "Another deployment is running. Exiting."
+    exit 0
+  fi
 else
-  log "NVM not found at $NVM_DIR, using system node"
+  log "flock not available; continuing without a deploy lock."
 fi
 
-log "Node: $(node -v || echo 'Not found')"
-log "NPM:  $(npm -v || echo 'Not found')"
+#############################################
+# PRE-FLIGHT
+#############################################
+require git
+require rsync
 
-#############################################
-# FIRST DEPLOY OR UPDATE
-#############################################
-log "Using app directory: $APP_DIR"
+if [[ -z "$REPO_URL" ]]; then
+  log "ERROR: REPO_URL is empty. Provide REPO_URL (SSH URL) from workflow."
+  exit 1
+fi
+
 mkdir -p "$APP_DIR"
-cd "$APP_DIR"
+log "Deploy dir: $APP_DIR"
+log "Repo: $REPO_URL (branch: $BRANCH)"
 
-if [[ ! -d "$APP_DIR/.git" || ! -f "$APP_DIR/package.json" ]]; then
-  if [[ -z "$REPO_URL" ]]; then
-    log "ERROR: REPO_URL is empty. Provide REPO_URL via workflow."
-    exit 1
+#############################################
+# NVM / NODE
+#############################################
+if [[ -f "$NVM_DIR/nvm.sh" ]]; then
+  # shellcheck disable=SC1091
+  source "$NVM_DIR/nvm.sh"
+  if [[ -n "$NODE_VERSION" ]]; then
+    log "Using Node via NVM: $NODE_VERSION"
+    nvm install "$NODE_VERSION" >/dev/null
+    nvm use "$NODE_VERSION" >/dev/null
+  fi
+else
+  log "NVM not found at $NVM_DIR (using system node)"
+fi
+
+log "Node: $(node -v 2>/dev/null || echo 'not found')"
+log "NPM:  $(npm -v 2>/dev/null || echo 'not found')"
+
+#############################################
+# GIT AUTH (VPS -> GitHub) via deploy key
+#############################################
+if [[ -f "$GITHUB_DEPLOY_KEY_PATH" ]]; then
+  mkdir -p "$(dirname "$GITHUB_KNOWN_HOSTS")"
+  touch "$GITHUB_KNOWN_HOSTS"
+  chmod 600 "$GITHUB_KNOWN_HOSTS" || true
+
+  # Ensure github.com is in known_hosts (prefer pinning, but this is safer than disabling checks)
+  if ! ssh-keygen -F github.com -f "$GITHUB_KNOWN_HOSTS" >/dev/null 2>&1; then
+    log "Adding github.com to known_hosts (consider pinning GitHub fingerprints)."
+    ssh-keyscan -H github.com >> "$GITHUB_KNOWN_HOSTS" 2>/dev/null || true
   fi
 
-  TMP_CLONE="/tmp/express_api_clone_$$"
+  export GIT_SSH_COMMAND="ssh -i '$GITHUB_DEPLOY_KEY_PATH' -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile='$GITHUB_KNOWN_HOSTS'"
+else
+  log "WARNING: GitHub deploy key not found at $GITHUB_DEPLOY_KEY_PATH"
+  log "         Git operations may fail unless another SSH key is configured."
+fi
+
+#############################################
+# CLONE / UPDATE
+#############################################
+cd "$APP_DIR"
+
+if [[ ! -d ".git" ]]; then
+  TMP_CLONE="/tmp/debarras_server_clone_$$"
   log "First deploy → cloning into: $TMP_CLONE"
   git clone --branch "$BRANCH" "$REPO_URL" "$TMP_CLONE"
-
-  log "Copying project to $APP_DIR"
+  log "Syncing to $APP_DIR"
   rsync -a --delete "$TMP_CLONE/" "$APP_DIR/"
   rm -rf "$TMP_CLONE"
 else
   log "Updating existing repo"
-  git fetch --all
+  git fetch --prune origin
+  git checkout "$BRANCH" || true
   git reset --hard "origin/$BRANCH"
   git clean -fd
 fi
@@ -66,84 +120,77 @@ fi
 cd "$APP_DIR"
 
 #############################################
-# ENV SYNC (optional)
+# INSTALL
 #############################################
-if [[ -f "$ENV_PAYLOAD_PATH" ]]; then
-  log "Applying .env updates"
-  mv "$ENV_PAYLOAD_PATH" "$ENV_FILE"
+require npm
+
+if [[ -f package-lock.json ]]; then
+  log "Installing dependencies (npm ci)"
+  npm ci --no-audit --no-fund
 else
-  log "No env file provided (skipped)"
+  log "Installing dependencies (npm install)"
+  npm install --no-audit --no-fund
 fi
 
-# Ensure .env exists
-mkdir -p "$(dirname "$ENV_FILE")"
-touch "$ENV_FILE"
-
 #############################################
-# INSTALL DEPENDENCIES
-#############################################
-log "Installing dependencies (npm install)"
-npm install --legacy-peer-deps --no-audit --no-fund
-
-#############################################
-# PRISMA (generate + migrate)
+# PRISMA (optional)
 #############################################
 if [[ -f "prisma/schema.prisma" ]]; then
-  log "Generating Prisma client"
-  npm run prisma:generate
+  log "Prisma detected"
+  if has_npm_script "prisma:generate"; then
+    npm run prisma:generate
+  else
+    npx prisma generate
+  fi
 
-  log "Running Prisma migrations (deploy)"
-  npx prisma migrate deploy
-
-  log "Seeding database"
-  npx prisma db seed
-else
-  log "Prisma schema not found (skipped)"
+  # Safe default for production DB
+  npx prisma migrate deploy || log "WARN: prisma migrate deploy failed (check DB / migrations)"
 fi
 
 #############################################
-# BUILD PROJECT (TypeScript)
+# BUILD (optional)
 #############################################
-log "Building application"
-npm run build
-
-#############################################
-# PM2: START/RESTART EXPRESS
-#############################################
-log "Configuring PM2"
-
-# Export PORT for runtime
-export PORT="$APP_PORT"
-
-if [[ -f "ecosystem.config.cjs" || -f "ecosystem.config.js" ]]; then
-  ECOSYSTEM_FILE="ecosystem.config.cjs"
-  if [[ -f "ecosystem.config.js" ]]; then
-    ECOSYSTEM_FILE="ecosystem.config.js"
-  fi
-
-  log "Using $ECOSYSTEM_FILE for PM2"
-
-  if pm2 describe "$PM2_APP" >/dev/null 2>&1; then
-    log "Restarting existing PM2 process: $PM2_APP"
-    pm2 restart "$ECOSYSTEM_FILE" --env production
-  else
-    log "Starting PM2 process with ecosystem config"
-    pm2 start "$ECOSYSTEM_FILE" --env production
-  fi
+if has_npm_script "build"; then
+  log "Building (npm run build)"
+  npm run build
 else
-  log "No ecosystem config found, using inline PM2 command"
-
-  if pm2 describe "$PM2_APP" >/dev/null 2>&1; then
-    log "Restarting existing PM2 process: $PM2_APP"
-    pm2 restart "$PM2_APP"
-  else
-    log "Starting PM2 process"
-    pm2 start dist/server.js --name "$PM2_APP"
-  fi
+  log "No build script found (skipped)"
 fi
 
-# Persist PM2 process list for reboot survival
-pm2 save
+#############################################
+# RESTART (PM2)
+#############################################
+if command -v pm2 >/dev/null 2>&1; then
+  log "PM2 found"
 
-log "Deployment completed successfully"
-log "Express app '$PM2_APP' running on port $APP_PORT"
+  # Prefer ecosystem file if exists
+  if [[ -f "ecosystem.config.cjs" || -f "ecosystem.config.js" ]]; then
+    ECOSYSTEM="ecosystem.config.cjs"
+    [[ -f "ecosystem.config.js" ]] && ECOSYSTEM="ecosystem.config.js"
+
+    log "Using $ECOSYSTEM"
+    if pm2 describe "$PM2_APP" >/dev/null 2>&1; then
+      pm2 restart "$ECOSYSTEM" --env production
+    else
+      pm2 start "$ECOSYSTEM" --env production
+    fi
+  else
+    # Fallback: run npm start under PM2
+    if has_npm_script "start"; then
+      if pm2 describe "$PM2_APP" >/dev/null 2>&1; then
+        pm2 restart "$PM2_APP"
+      else
+        pm2 start npm --name "$PM2_APP" -- start
+      fi
+    else
+      log "ERROR: No ecosystem config and no npm start script."
+      exit 1
+    fi
+  fi
+
+  pm2 save
+  log "Deployment done ✅ (PM2 app: $PM2_APP)"
+else
+  log "ERROR: PM2 is not installed on the server."
+  exit 1
+fi

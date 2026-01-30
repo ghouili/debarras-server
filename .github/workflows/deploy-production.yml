@@ -1,9 +1,8 @@
-name: Deploy Express CRM API (Production)
+name: Deploy Débarras Server API (Production)
 
 on:
   push:
-    branches:
-      - production
+    branches: [production]
   workflow_dispatch:
 
 jobs:
@@ -11,62 +10,86 @@ jobs:
     runs-on: ubuntu-latest
     environment: deploy
 
+    # 최소 권한 (checkout에만 필요)
+    permissions:
+      contents: read
+
     env:
       SSH_HOST: ${{ secrets.SSH_HOST }}
       SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
       SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
 
-      # Variables (Environment -> deploy -> Variables)
-      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
-      NODE_VERSION: ${{ vars.NODE_VERSION || '20' }}
-      PM2_APP: ${{ vars.PM2_APP || 'express-crm-api' }}
-      APP_PORT: ${{ vars.APP_PORT || '3000' }}
-      NVM_DIR: ${{ vars.NVM_DIR }}
+      # ---- Remote deploy config (Environment -> deploy -> Variables) ----
+      APP_DIR: ${{ vars.APP_DIR || '/var/www/debarras-server' }}
+      BRANCH: ${{ vars.BRANCH || 'production' }}
+      PM2_APP: ${{ vars.PM2_APP || 'debarras-server' }}
+      NODE_VERSION: ${{ vars.NODE_VERSION || '24' }}
+
+      # Repo to deploy (SSH URL is required on server side)
+      # (You can override with an Environment Variable if you want.)
+      REPO_SSH_URL: ${{ vars.REPO_SSH_URL || 'git@github.com:ghouili/debarras-server.git' }}
+
+      # Path ON THE SERVER to the GitHub deploy key (private key file)
+      # This key is NOT stored in GitHub Secrets.
+      GITHUB_DEPLOY_KEY_PATH: ${{ vars.GITHUB_DEPLOY_KEY_PATH || '$HOME/.ssh/debarras_server_github_deploy' }}
 
     steps:
-      - name: Checkout code
+      - name: Checkout (for deploy.sh)
         uses: actions/checkout@v4
 
-      - name: Setup SSH agent
+      # This key is the VPS login key (CI -> VPS), NOT the GitHub deploy key.
+      - name: Setup SSH agent (CI -> VPS)
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Add VPS to known_hosts
+      - name: Add VPS host to known_hosts
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          # Use pinned known_hosts if provided, otherwise scan
+
           if [[ -n "${{ secrets.SSH_KNOWN_HOSTS }}" ]]; then
             echo "${{ secrets.SSH_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
           else
+            # Best practice is to pin SSH_KNOWN_HOSTS, but scanning is better than disabling checks.
             ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
           fi
+
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Upload deploy script
+      - name: Upload deploy script to VPS
+        shell: bash
         run: |
-          scp -P "$SSH_PORT" deploy.sh "$SSH_USERNAME@$SSH_HOST:/tmp/deploy.sh"
-
-      # ----------------------------
-      # OPTIONAL: Upload env payload
-      # Create a secret named EXPRESS_ENV in Environment "deploy" if needed
-      # ----------------------------
-      # - name: Upload env payload
-      #   run: |
-      #     echo "${{ secrets.EXPRESS_ENV }}" > env.payload
-      #     scp -P "$SSH_PORT" env.payload "$SSH_USERNAME@$SSH_HOST:/tmp/express-api.env"
-      #     rm env.payload
+          set -euo pipefail
+          scp \
+            -P "$SSH_PORT" \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            ./deploy.sh "$SSH_USERNAME@$SSH_HOST:/tmp/deploy.sh"
 
       - name: Execute remote deployment
+        shell: bash
         run: |
-          ssh -p "$SSH_PORT" "$SSH_USERNAME@$SSH_HOST" "\
-            export APP_DIR='${DEPLOY_PATH}' && \
-            export REPO_URL='git@github.com:${{ github.repository }}.git' && \
-            export BRANCH='production' && \
-            export NVM_DIR='${{ vars.NVM_DIR }}' && \
-            export PM2_APP='${PM2_APP}' && \
-            export APP_PORT='${APP_PORT}' && \
-            export ENV_PAYLOAD_PATH='/tmp/express-api.env' && \
-            bash /tmp/deploy.sh \
-          "
+          set -euo pipefail
+          ssh \
+            -p "$SSH_PORT" \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "$SSH_USERNAME@$SSH_HOST" "bash -lc '
+              chmod +x /tmp/deploy.sh
+
+              export APP_DIR=\"${APP_DIR}\"
+              export BRANCH=\"${BRANCH}\"
+              export REPO_URL=\"${REPO_SSH_URL}\"
+
+              export NODE_VERSION=\"${NODE_VERSION}\"
+              export PM2_APP=\"${PM2_APP}\"
+
+              export GITHUB_DEPLOY_KEY_PATH=\"${GITHUB_DEPLOY_KEY_PATH}\"
+
+              /tmp/deploy.sh
+            '"
