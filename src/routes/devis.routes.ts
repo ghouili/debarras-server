@@ -8,7 +8,7 @@ const router = Router();
 
 router.get("/", list);
 router.get("/:id", validate(devisIdSchema), get);
-router.post("/", create);
+router.post("/", validate(devisCreateSchema), create);
 router.patch("/:id", validate(devisUpdateSchema), update);
 router.delete("/:id", validate(devisIdSchema), remove);
 // router.get("/", authMiddleware(["admin", "agent"]), list);
