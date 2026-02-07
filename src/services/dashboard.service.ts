@@ -18,22 +18,26 @@ export const getDashboardStats = async () => {
   const [contactsGrouped, devisGrouped] = await prisma.$transaction([
     prisma.contact.groupBy({
       by: ["status"],
-      _count: { status: true }
+      _count: { _all: true },
+      orderBy: { status: "asc" }
     }),
     prisma.devis.groupBy({
       by: ["status"],
-      _count: { status: true }
+      _count: { _all: true },
+      orderBy: { status: "asc" }
     })
   ]);
 
   const contactsByStatus = { ...contactStatusDefaults };
   for (const row of contactsGrouped) {
-    contactsByStatus[row.status] = row._count.status;
+    const count = typeof row._count === "object" && row._count ? row._count._all ?? 0 : 0;
+    contactsByStatus[row.status] = count;
   }
 
   const devisByStatus = { ...devisStatusDefaults };
   for (const row of devisGrouped) {
-    devisByStatus[row.status] = row._count.status;
+    const count = typeof row._count === "object" && row._count ? row._count._all ?? 0 : 0;
+    devisByStatus[row.status] = count;
   }
 
   const contactsTotal = Object.values(contactsByStatus).reduce((sum, value) => sum + value, 0);
