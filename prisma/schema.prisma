@@ -14,16 +14,16 @@ enum UserRole {
 }
 
 enum ContactStatus {
-  new
-  in_progress
-  closed
+  nouveau
+  en_cours
+  fermee
 }
 
 enum DevisStatus {
-  new
-  quoted
-  won
-  lost
+  nouveau
+  traite
+  gagne
+  perdu
 }
 
 enum EmailStatus {
@@ -58,7 +58,7 @@ model Contact {
   postalCode String?
   message    String
   consent    Boolean?       @default(true)
-  status     ContactStatus @default(new)
+  status     ContactStatus @default(nouveau)
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
@@ -86,7 +86,7 @@ model Devis {
   email          String
   phone          String
   consent        Boolean     @default(true)
-  status         DevisStatus @default(new)
+  status         DevisStatus @default(nouveau)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 

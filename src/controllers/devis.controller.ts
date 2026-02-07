@@ -4,7 +4,8 @@ import {
   deleteDevis,
   getDevis,
   listDevis,
-  updateDevis
+  updateDevis,
+  updateDevisStatus
 } from "../services/devis.service";
 
 export const list = async (req: Request, res: Response) => {
@@ -24,6 +25,11 @@ export const create = async (req: Request, res: Response) => {
 
 export const update = async (req: Request, res: Response) => {
   const devis = await updateDevis(req.validated.params.id, req.validated.body);
+  res.json(devis);
+};
+
+export const updateStatus = async (req: Request, res: Response) => {
+  const devis = await updateDevisStatus(req.validated.params.id, req.validated.body.status);
   res.json(devis);
 };
 

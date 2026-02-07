@@ -9,7 +9,7 @@ export const contactCreateSchema = z.object({
     postalCode: z.string().optional().nullable(),
     message: z.string().min(1),
     consent: z.boolean(),
-    status: z.enum(["new", "in_progress", "closed"]).optional()
+    status: z.enum(["nouveau", "en_cours", "fermee"]).optional()
   })
 });
 
@@ -25,7 +25,16 @@ export const contactUpdateSchema = z.object({
     postalCode: z.string().optional().nullable(),
     message: z.string().optional(),
     consent: z.boolean().optional(),
-    status: z.enum(["new", "in_progress", "closed"]).optional()
+    status: z.enum(["nouveau", "en_cours", "fermee"]).optional()
+  })
+});
+
+export const contactStatusUpdateSchema = z.object({
+  params: z.object({
+    id: z.string().uuid()
+  }),
+  body: z.object({
+    status: z.enum(["nouveau", "en_cours", "fermee"])
   })
 });
 

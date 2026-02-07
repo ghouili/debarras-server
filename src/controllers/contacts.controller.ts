@@ -4,7 +4,8 @@ import {
   deleteContact,
   getContact,
   listContacts,
-  updateContact
+  updateContact,
+  updateContactStatus
 } from "../services/contacts.service";
 
 export const list = async (req: Request, res: Response) => {
@@ -25,6 +26,11 @@ export const create = async (req: Request, res: Response) => {
 
 export const update = async (req: Request, res: Response) => {
   const contact = await updateContact(req.validated.params.id, req.validated.body);
+  res.json(contact);
+};
+
+export const updateStatus = async (req: Request, res: Response) => {
+  const contact = await updateContactStatus(req.validated.params.id, req.validated.body.status);
   res.json(contact);
 };
 

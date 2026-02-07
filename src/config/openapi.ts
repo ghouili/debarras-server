@@ -70,7 +70,7 @@ export const openapiSpec = {
           postalCode: { type: "string", nullable: true },
           message: { type: "string" },
           consent: { type: "boolean" },
-          status: { type: "string", enum: ["new", "in_progress", "closed"] },
+          status: { type: "string", enum: ["nouveau", "en_cours", "fermee"] },
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" }
         }
@@ -98,7 +98,7 @@ export const openapiSpec = {
           email: { type: "string", format: "email" },
           phone: { type: "string" },
           consent: { type: "boolean" },
-          status: { type: "string", enum: ["new", "quoted", "won", "lost"] },
+          status: { type: "string", enum: ["nouveau", "traite", "gagne", "perdu"] },
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" }
         }
@@ -485,7 +485,7 @@ export const openapiSpec = {
         parameters: [
           { name: "page", in: "query", schema: { type: "integer", default: 1 } },
           { name: "limit", in: "query", schema: { type: "integer", default: 20, maximum: 100 } },
-          { name: "status", in: "query", schema: { type: "string", enum: ["new", "in_progress", "closed"] } },
+          { name: "status", in: "query", schema: { type: "string", enum: ["nouveau", "en_cours", "fermee"] } },
           { name: "search", in: "query", schema: { type: "string" } },
           { name: "startDate", in: "query", schema: { type: "string", format: "date-time" } },
           { name: "endDate", in: "query", schema: { type: "string", format: "date-time" } }
@@ -529,7 +529,7 @@ export const openapiSpec = {
                   postalCode: { type: "string", nullable: true },
                   message: { type: "string" },
                   consent: { type: "boolean" },
-                  status: { type: "string", enum: ["new", "in_progress", "closed"] }
+                  status: { type: "string", enum: ["nouveau", "en_cours", "fermee"] }
                 }
               },
               examples: {
@@ -543,7 +543,7 @@ export const openapiSpec = {
                     postalCode: "75001",
                     message: "Need information",
                     consent: true,
-                    status: "new"
+                    status: "nouveau"
                   }
                 }
               }
@@ -571,7 +571,7 @@ export const openapiSpec = {
           content: {
             "application/json": {
               schema: { type: "object" },
-              examples: { update: { summary: "Update contact", value: { status: "in_progress" } } }
+              examples: { update: { summary: "Update contact", value: { status: "en_cours" } } }
             }
           }
         },
@@ -585,6 +585,29 @@ export const openapiSpec = {
         responses: { "204": { description: "No content" } }
       }
     },
+    "/contacts/{id}/status": {
+      patch: {
+        tags: ["Contacts"],
+        summary: "Update contact status",
+        description: "Updates only the contact status.",
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["status"],
+                properties: { status: { type: "string", enum: ["nouveau", "en_cours", "fermee"] } }
+              },
+              examples: { update: { summary: "Update status", value: { status: "en_cours" } } }
+            }
+          }
+        },
+        responses: { "200": { description: "OK", content: { "application/json": { schema: { $ref: "#/components/schemas/Contact" } } } } }
+      }
+    },
     "/devis": {
       get: {
         tags: ["Devis"],
@@ -594,7 +617,7 @@ export const openapiSpec = {
         parameters: [
           { name: "page", in: "query", schema: { type: "integer", default: 1 } },
           { name: "limit", in: "query", schema: { type: "integer", default: 20, maximum: 100 } },
-          { name: "status", in: "query", schema: { type: "string", enum: ["new", "quoted", "won", "lost"] } },
+          { name: "status", in: "query", schema: { type: "string", enum: ["nouveau", "traite", "gagne", "perdu"] } },
           { name: "search", in: "query", schema: { type: "string" } },
           { name: "startDate", in: "query", schema: { type: "string", format: "date-time" } },
           { name: "endDate", in: "query", schema: { type: "string", format: "date-time" } }
@@ -633,7 +656,7 @@ export const openapiSpec = {
                     email: "marie@example.com",
                     phone: "+33-610-000-000",
                     consent: true,
-                    status: "new"
+                    status: "nouveau"
                   }
                 }
               }
@@ -661,7 +684,7 @@ export const openapiSpec = {
           content: {
             "application/json": {
               schema: { type: "object" },
-              examples: { update: { summary: "Update devis", value: { status: "quoted" } } }
+              examples: { update: { summary: "Update devis", value: { status: "traite" } } }
             }
           }
         },
@@ -673,6 +696,95 @@ export const openapiSpec = {
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
         responses: { "204": { description: "No content" } }
+      }
+    },
+    "/devis/{id}/status": {
+      patch: {
+        tags: ["Devis"],
+        summary: "Update devis status",
+        description: "Updates only the devis status.",
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["status"],
+                properties: { status: { type: "string", enum: ["nouveau", "traite", "gagne", "perdu"] } }
+              },
+              examples: { update: { summary: "Update status", value: { status: "gagne" } } }
+            }
+          }
+        },
+        responses: { "200": { description: "OK", content: { "application/json": { schema: { $ref: "#/components/schemas/Devis" } } } } }
+      }
+    },
+    "/dashboard": {
+      get: {
+        tags: ["Users"],
+        summary: "Dashboard stats",
+        description: "Admin dashboard counts for contacts and devis.",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": {
+            description: "OK",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    contacts: {
+                      type: "object",
+                      properties: {
+                        total: { type: "integer" },
+                        byStatus: {
+                          type: "object",
+                          properties: {
+                            nouveau: { type: "integer" },
+                            en_cours: { type: "integer" },
+                            fermee: { type: "integer" }
+                          }
+                        }
+                      }
+                    },
+                    devis: {
+                      type: "object",
+                      properties: {
+                        total: { type: "integer" },
+                        byStatus: {
+                          type: "object",
+                          properties: {
+                            nouveau: { type: "integer" },
+                            traite: { type: "integer" },
+                            gagne: { type: "integer" },
+                            perdu: { type: "integer" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                examples: {
+                  stats: {
+                    summary: "Dashboard stats",
+                    value: {
+                      contacts: {
+                        total: 14,
+                        byStatus: { nouveau: 6, en_cours: 5, fermee: 3 }
+                      },
+                      devis: {
+                        total: 9,
+                        byStatus: { nouveau: 3, traite: 2, gagne: 2, perdu: 2 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/emails": {

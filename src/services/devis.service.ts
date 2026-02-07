@@ -54,6 +54,11 @@ export const updateDevis = async (id: string, data: Prisma.DevisUpdateInput) => 
   return prisma.devis.update({ where: { id }, data });
 };
 
+export const updateDevisStatus = async (id: string, status: DevisStatus) => {
+  await getDevis(id);
+  return prisma.devis.update({ where: { id }, data: { status } });
+};
+
 export const deleteDevis = async (id: string) => {
   await getDevis(id);
   return prisma.devis.delete({ where: { id } });

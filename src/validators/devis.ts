@@ -21,7 +21,7 @@ export const devisCreateSchema = z.object({
     email: z.string().email(),
     phone: z.string().min(1),
     consent: z.boolean(),
-    status: z.enum(["new", "quoted", "won", "lost"]).optional()
+    status: z.enum(["nouveau", "traite", "gagne", "perdu"]).optional()
   })
 });
 
@@ -49,7 +49,16 @@ export const devisUpdateSchema = z.object({
     email: z.string().email().optional(),
     phone: z.string().optional(),
     consent: z.boolean().optional(),
-    status: z.enum(["new", "quoted", "won", "lost"]).optional()
+    status: z.enum(["nouveau", "traite", "gagne", "perdu"]).optional()
+  })
+});
+
+export const devisStatusUpdateSchema = z.object({
+  params: z.object({
+    id: z.string().uuid()
+  }),
+  body: z.object({
+    status: z.enum(["nouveau", "traite", "gagne", "perdu"])
   })
 });
 

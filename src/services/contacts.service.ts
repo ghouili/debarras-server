@@ -54,6 +54,11 @@ export const updateContact = async (id: string, data: Prisma.ContactUpdateInput)
   return prisma.contact.update({ where: { id }, data });
 };
 
+export const updateContactStatus = async (id: string, status: ContactStatus) => {
+  await getContact(id);
+  return prisma.contact.update({ where: { id }, data: { status } });
+};
+
 export const deleteContact = async (id: string) => {
   await getContact(id);
   return prisma.contact.delete({ where: { id } });
